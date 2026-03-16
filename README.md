@@ -129,6 +129,8 @@ npx scopetrace --format compact --stack-frames 2 app.mjs
 
 `scopetrace ...` is a small wrapper around the preload mode. In `v0.3.x` it supports Node commands only. The legacy form `scopetrace run node app.mjs` still works, but the short form is now the default.
 
+The wrapper runs Node directly. For TypeScript projects, point it at built JavaScript or a TS runtime entry that Node can execute.
+
 Short alias:
 
 - `sctrace app.mjs`

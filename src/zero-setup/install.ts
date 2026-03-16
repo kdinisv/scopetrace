@@ -85,8 +85,13 @@ export function installZeroSetup(
         return;
       }
 
-      didPrint = true;
       const report = trace.report();
+
+      if ((process.exitCode ?? 0) !== 0 && report.summary.total === 0) {
+        return;
+      }
+
+      didPrint = true;
       const message = formatReport(report, formatOptions);
       const logger = options.logger ?? pickLogger(report);
       logger(message);

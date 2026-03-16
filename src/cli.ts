@@ -58,6 +58,10 @@ async function main(): Promise<void> {
     });
   });
 
+  if (exitCode !== 0) {
+    maybePrintTypeScriptHint(parsed.nodeArgs);
+  }
+
   process.exitCode = exitCode;
 }
 
@@ -97,6 +101,26 @@ function resolveRegisterPath(): string {
   ).href;
 }
 
+function maybePrintTypeScriptHint(nodeArgs: string[]): void {
+  const typeScriptEntry = nodeArgs.find((arg) =>
+    /\.(cts|mts|ts|tsx)$/.test(arg),
+  );
+
+  if (typeScriptEntry === undefined) {
+    return;
+  }
+
+  console.error(
+    [
+      "",
+      "TypeScript note:",
+      `  ${typeScriptEntry} is executed by Node directly through scopetrace.`,
+      "  scopetrace does not transpile TypeScript or rewrite TS-only import resolution.",
+      "  If this entry is not directly runnable by Node, point scopetrace at built JavaScript or use a TS runtime such as tsx.",
+    ].join("\n"),
+  );
+}
+
 function printHelp(error?: string): void {
   const output = [
     error,
@@ -119,6 +143,9 @@ function printHelp(error?: string): void {
     "  --http | --no-http",
     "  --https | --no-https",
     "  --net | --no-net",
+    "",
+    "Note:",
+    "  scopetrace runs Node directly. For TypeScript projects, point it at built JS or a TS runtime entry that Node can execute.",
   ]
     .filter((line) => line !== undefined)
     .join("\n");
