@@ -24,6 +24,7 @@ describe("cli TypeScript entry support", () => {
 
     expect(run.status).toBe(0);
     expect(run.stderr).not.toContain("ERR_MODULE_NOT_FOUND");
+    expect(run.stderr).toContain("scopetrace v");
     expect(run.stdout).toContain("ScopeTrace Report");
     expect(run.stdout).toContain("Status: OK");
   });

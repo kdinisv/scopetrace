@@ -20,7 +20,7 @@ Jest's `--detectOpenHandles` is frequently insufficient for real projects.
 
 ## Status
 
-`v0.3.2` — the main public stack is implemented: tracking, reporting, assertions, and runnable examples.
+`v0.3.4` — the main public stack is implemented: tracking, reporting, assertions, and runnable examples.
 
 | Phase | Status     | Description                                                  |
 | ----- | ---------- | ------------------------------------------------------------ |
@@ -187,6 +187,8 @@ This mode is intentionally best-effort. It is useful for initial leak discovery,
 - `examples/mini-projects/bad.mjs`
 - `examples/zero-setup/good-app.mjs`
 - `examples/zero-setup/bad-app.mjs`
+- `examples/mini-projects/good.ts`
+- `examples/mini-projects/bad.ts`
 
 ### Runnable CLI fixtures
 
@@ -199,6 +201,8 @@ npm run fixture:zero-good
 npm run fixture:zero-bad
 npm run fixture:cli-zero-good
 npm run fixture:cli-zero-bad
+npm run fixture:cli-ts-good
+npm run fixture:cli-ts-bad
 ```
 
 Expected behavior:
@@ -209,6 +213,8 @@ Expected behavior:
 - `fixture:zero-bad` runs a non-instrumented app through the preload and prints a best-effort leak report on exit
 - `fixture:cli-zero-good` runs the same zero-setup scenario via the CLI wrapper
 - `fixture:cli-zero-bad` runs the same zero-setup scenario via the CLI wrapper
+- `fixture:cli-ts-good` runs the good mini-project as a TypeScript entry file via the CLI wrapper
+- `fixture:cli-ts-bad` runs the bad mini-project as a TypeScript entry file — demonstrates leak detection on `.ts` code
 
 ## Release
 

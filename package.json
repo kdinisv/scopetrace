@@ -1,6 +1,6 @@
 {
   "name": "scopetrace",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Track resource ownership and detect leaks in Node.js processes",
   "type": "module",
   "bin": {
@@ -52,6 +52,8 @@
     "check": "npm run type-check && npm test && npm run build",
     "fixture:cli-zero-bad": "npm run build && node ./dist/cli.js examples/zero-setup/bad-app.mjs",
     "fixture:cli-zero-good": "npm run build && node ./dist/cli.js examples/zero-setup/good-app.mjs",
+    "fixture:cli-ts-good": "npm run build && node ./dist/cli.js examples/mini-projects/good.ts",
+    "fixture:cli-ts-bad": "npm run build && node ./dist/cli.js examples/mini-projects/bad.ts",
     "dev": "tsup --watch --sourcemap",
     "fixture:bad": "npm run build && node examples/mini-projects/bad.mjs",
     "fixture:good": "npm run build && node examples/mini-projects/good.mjs",

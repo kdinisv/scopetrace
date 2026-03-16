@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { checkForUpdate } from "./cli/check-update";
 import { parseCliArgs, type RunCliOptions } from "./cli/parse-cli-args";
 
 const TYPE_SCRIPT_ENTRY_PATTERN = /\.(cts|mts|ts|tsx)$/;
+const PACKAGE_NAME = "scopetrace";
+const CURRENT_VERSION = readCurrentVersion();
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -33,6 +37,13 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
+
+  process.stderr.write(`scopetrace v${CURRENT_VERSION}\n\n`);
+
+  // Start update check before spawning — runs concurrently with the child process
+  const updateCheckPromise = shouldCheckForUpdate()
+    ? checkForUpdate(PACKAGE_NAME, CURRENT_VERSION)
+    : Promise.resolve(undefined);
 
   const env = {
     ...process.env,
@@ -64,6 +75,18 @@ async function main(): Promise<void> {
   });
 
   process.exitCode = exitCode;
+
+  // Race the update check against a short fallback — usually already resolved
+  const updateMessage = await Promise.race([
+    updateCheckPromise,
+    new Promise<undefined>((resolve) => {
+      setTimeout(() => resolve(undefined), 1500).unref();
+    }),
+  ]);
+
+  if (updateMessage !== undefined) {
+    process.stderr.write(`\n${updateMessage}\n`);
+  }
 }
 
 function buildScopedEnv(options: RunCliOptions): Record<string, string> {
@@ -102,7 +125,30 @@ function resolveRegisterPath(): string {
 }
 
 function shouldEnableTypeScriptRuntime(nodeArgs: string[]): boolean {
-  return nodeArgs.some((arg) => TYPE_SCRIPT_ENTRY_PATTERN.test(arg));
+  const entry = nodeArgs.find((arg) => !arg.startsWith("-"));
+  return entry !== undefined && TYPE_SCRIPT_ENTRY_PATTERN.test(entry);
+}
+
+function readCurrentVersion(): string {
+  try {
+    const pkgPath = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../package.json",
+    );
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as {
+      version: string;
+    };
+    return pkg.version;
+  } catch {
+    return "unknown";
+  }
+}
+
+function shouldCheckForUpdate(): boolean {
+  return (
+    process.env.SCOPETRACE_NO_UPDATE_CHECK === undefined &&
+    process.env.CI === undefined
+  );
 }
 
 function printHelp(error?: string): void {
