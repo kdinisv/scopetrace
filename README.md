@@ -32,6 +32,31 @@ Jest's `--detectOpenHandles` is frequently insufficient for real projects.
 | 6     | 🔜 Planned | Integration examples                      |
 | 7     | 🔜 Planned | Hardening + v1.0.0                        |
 
+## Roadmap
+
+| Milestone | Goal                         | Planned scope                                                                                                       |
+| --------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| v0.1.x    | Stabilize foundation         | Harden `scope()`, keep per-instance isolation, improve docs, verify behavior in real apps                           |
+| v0.2.0    | First real leak tracking     | Resource registry, lifecycle statuses, `trackDisposable()`, `trackTimeout()`, `trackInterval()`, initial `report()` |
+| v0.3.0    | Test and service integration | `trackServer()`, `assertNoLeaks()`, compact output, examples for `node:test`, Vitest, Jest                          |
+| v0.4.0    | Developer ergonomics         | Ignore rules, better stack formatting, graceful shutdown helper, richer summaries                                   |
+| v1.0.0    | Stable public release        | API freeze, CI matrix, benchmarks, docs cleanup, npm publish                                                        |
+| v1.1+     | Extensibility                | `trackAbortController()`, `trackImmediate()`, adapter API, optional plugins                                         |
+
+### Current focus
+
+- Finish the resource registry without retaining unnecessary strong references.
+- Ship the first useful trackers for timers and custom disposables.
+- Make `report()` actionable before adding broader integrations.
+
+### Out of scope for v1
+
+- Global auto-instrumentation through `async_hooks`
+- Deep monkey patching of Node built-ins
+- Built-in adapters for databases and message brokers
+- Worker threads, `child_process`, and broad socket auto-detection
+- Web UI or APM-style aggregation
+
 ## Requirements
 
 - Node.js `>= 20`
