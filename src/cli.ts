@@ -2,8 +2,10 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseCliArgs, type RunCliOptions } from "./cli/parse-cli-args";
+
+const TYPE_SCRIPT_ENTRY_PATTERN = /\.(cts|mts|ts|tsx)$/;
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -36,10 +38,13 @@ async function main(): Promise<void> {
     ...process.env,
     ...buildScopedEnv(parsed.options),
   };
+  const runtimeImports = shouldEnableTypeScriptRuntime(parsed.nodeArgs)
+    ? ["--import", "tsx"]
+    : [];
 
   const child = spawn(
     process.execPath,
-    ["--import", resolveRegisterPath(), ...parsed.nodeArgs],
+    [...runtimeImports, "--import", resolveRegisterPath(), ...parsed.nodeArgs],
     {
       stdio: "inherit",
       env,
@@ -57,10 +62,6 @@ async function main(): Promise<void> {
       resolve(code ?? 0);
     });
   });
-
-  if (exitCode !== 0) {
-    maybePrintTypeScriptHint(parsed.nodeArgs);
-  }
 
   process.exitCode = exitCode;
 }
@@ -96,29 +97,12 @@ function setBoolEnv(
 }
 
 function resolveRegisterPath(): string {
-  return pathToFileURL(
-    path.join(path.dirname(process.argv[1] ?? process.cwd()), "register.js"),
-  ).href;
+  const cliDir = path.dirname(fileURLToPath(import.meta.url));
+  return pathToFileURL(path.join(cliDir, "register.js")).href;
 }
 
-function maybePrintTypeScriptHint(nodeArgs: string[]): void {
-  const typeScriptEntry = nodeArgs.find((arg) =>
-    /\.(cts|mts|ts|tsx)$/.test(arg),
-  );
-
-  if (typeScriptEntry === undefined) {
-    return;
-  }
-
-  console.error(
-    [
-      "",
-      "TypeScript note:",
-      `  ${typeScriptEntry} is executed by Node directly through scopetrace.`,
-      "  scopetrace does not transpile TypeScript or rewrite TS-only import resolution.",
-      "  If this entry is not directly runnable by Node, point scopetrace at built JavaScript or use a TS runtime such as tsx.",
-    ].join("\n"),
-  );
+function shouldEnableTypeScriptRuntime(nodeArgs: string[]): boolean {
+  return nodeArgs.some((arg) => TYPE_SCRIPT_ENTRY_PATTERN.test(arg));
 }
 
 function printHelp(error?: string): void {
@@ -131,6 +115,7 @@ function printHelp(error?: string): void {
     "",
     "Examples:",
     "  npx scopetrace app.mjs",
+    "  npx scopetrace src/app.ts",
     "  npx scopetrace --format compact --stack-frames 2 app.mjs",
     "  npx scopetrace run node app.mjs",
     "  npm exec --package scopetrace sctrace app.mjs",
@@ -145,7 +130,7 @@ function printHelp(error?: string): void {
     "  --net | --no-net",
     "",
     "Note:",
-    "  scopetrace runs Node directly. For TypeScript projects, point it at built JS or a TS runtime entry that Node can execute.",
+    "  TypeScript entry files (.ts, .tsx, .mts, .cts) are executed through the built-in tsx runtime.",
   ]
     .filter((line) => line !== undefined)
     .join("\n");

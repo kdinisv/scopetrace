@@ -54,8 +54,20 @@ describe("cli argument parsing", () => {
     expect(parsed.nodeArgs).toEqual(["--inspect", "app.mjs"]);
   });
 
-  it("returns help for direct help flag", () => {
+  it("returns help for --help flag", () => {
     const parsed = parseCliArgs(["--help"]);
+
+    expect(parsed.help).toBe(true);
+  });
+
+  it("returns help for -h flag", () => {
+    const parsed = parseCliArgs(["-h"]);
+
+    expect(parsed.help).toBe(true);
+  });
+
+  it("returns help for -h after options", () => {
+    const parsed = parseCliArgs(["--format", "compact", "-h"]);
 
     expect(parsed.help).toBe(true);
   });

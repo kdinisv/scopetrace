@@ -1,6 +1,6 @@
 {
   "name": "scopetrace",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Track resource ownership and detect leaks in Node.js processes",
   "type": "module",
   "bin": {
@@ -107,5 +107,8 @@
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
+  },
+  "dependencies": {
+    "tsx": "^4.21.0"
   }
 }

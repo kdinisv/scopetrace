@@ -20,7 +20,7 @@ Jest's `--detectOpenHandles` is frequently insufficient for real projects.
 
 ## Status
 
-`v0.3.0` — the main public stack is implemented: tracking, reporting, assertions, and runnable examples.
+`v0.3.2` — the main public stack is implemented: tracking, reporting, assertions, and runnable examples.
 
 | Phase | Status     | Description                                                  |
 | ----- | ---------- | ------------------------------------------------------------ |
@@ -124,16 +124,18 @@ Run your app without changing its code:
 ```bash
 node --import scopetrace/register app.mjs
 npx scopetrace app.mjs
+npx scopetrace src/app.ts
 npx scopetrace --format compact --stack-frames 2 app.mjs
 ```
 
 `scopetrace ...` is a small wrapper around the preload mode. In `v0.3.x` it supports Node commands only. The legacy form `scopetrace run node app.mjs` still works, but the short form is now the default.
 
-The wrapper runs Node directly. For TypeScript projects, point it at built JavaScript or a TS runtime entry that Node can execute.
+TypeScript entry files (`.ts`, `.tsx`, `.mts`, `.cts`) are supported out of the box through the built-in `tsx` runtime.
 
 Short alias:
 
 - `sctrace app.mjs`
+- `sctrace src/app.ts`
 
 Use `sctrace` when the package is installed locally or globally. For one-off remote execution, keep using `npx scopetrace ...` or `npm exec --package scopetrace sctrace ...`.
 
@@ -216,7 +218,7 @@ See [docs/release-checklist.md](docs/release-checklist.md) for the publication c
 - **Scope-based ownership** — every resource knows its business context
 - **CI-friendly** — structured JSON output for automated pipelines
 - **TypeScript-first** — ESM + CJS, full types included
-- **Zero runtime dependencies**
+- **Minimal runtime dependencies** — only `tsx` for built-in TypeScript entry support
 
 ## License
 
