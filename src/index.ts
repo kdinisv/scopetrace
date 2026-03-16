@@ -3,6 +3,11 @@ export { formatCompactReport } from "./reporting/format-compact";
 export { formatJsonReport } from "./reporting/format-json";
 export { formatPrettyReport } from "./reporting/format-pretty";
 export { formatReport } from "./reporting/format-report";
+export {
+  getZeroSetupTrace,
+  installZeroSetup,
+  uninstallZeroSetup,
+} from "./zero-setup/install";
 
 export type { AsyncContext } from "./context/async-context";
 
@@ -17,6 +22,10 @@ export type {
   ScopeTraceReport,
   LeakedResource,
 } from "./types/public";
+export type {
+  ZeroSetupController,
+  ZeroSetupInstallOptions,
+} from "./zero-setup/install";
 
 export {
   ScopeTraceError,

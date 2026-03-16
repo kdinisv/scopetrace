@@ -1,44 +1,82 @@
 import type { FormatReportOptions, ScopeTraceReport } from "../types/public";
+import {
+  createPalette,
+  formatDuration,
+  getStackPreview,
+  normalizeFormatOptions,
+} from "./format-shared";
 
 export function formatPrettyReport(
   report: ScopeTraceReport,
   options: Omit<FormatReportOptions, "format"> = {},
 ): string {
-  const limit = options.limit ?? report.leaks.length;
-  const leaks = report.leaks.slice(0, limit);
+  const normalized = normalizeFormatOptions(report, options);
+  const palette = createPalette(normalized.color);
+  const leaks = report.leaks.slice(0, normalized.limit);
   const lines = [
-    "ScopeTrace report",
-    `summary: total=${report.summary.total} active=${report.summary.active} disposed=${report.summary.disposed} leaked=${report.summary.leaked}`,
+    palette.title("ScopeTrace Report"),
+    palette.muted("=".repeat(72)),
+    `${palette.label("Status:")} ${
+      report.summary.leaked === 0
+        ? palette.ok("OK")
+        : palette.error("LEAKS DETECTED")
+    }`,
+    `${palette.label("Summary:")} total ${report.summary.total} | active ${report.summary.active} | disposed ${report.summary.disposed} | leaked ${report.summary.leaked}`,
   ];
 
   if (report.summary.leaked === 0) {
-    lines.push("no leaked resources detected");
+    lines.push("");
+    lines.push(palette.ok("No leaked resources detected."));
     return lines.join("\n");
   }
 
-  for (const leak of leaks) {
-    lines.push("");
-    lines.push(
-      `- ${leak.kind}${leak.label !== undefined ? ` \"${leak.label}\"` : ""}`,
+  for (const [index, leak] of leaks.entries()) {
+    const stackPreview = getStackPreview(
+      leak.stack,
+      normalized.stackFrameLimit,
     );
 
+    lines.push("");
+    lines.push(
+      `${palette.error(`[${index + 1}]`)} ${palette.value(leak.kind.toUpperCase())}${leak.label !== undefined ? ` ${palette.value(`\"${leak.label}\"`)}` : ""}`,
+    );
+
+    lines.push(`    ${palette.label("Id:")} ${palette.muted(leak.id)}`);
+
     if (leak.scope !== undefined && leak.scope.length > 0) {
-      lines.push(`  scope: ${leak.scope}`);
+      lines.push(`    ${palette.label("Scope:")} ${leak.scope}`);
     }
 
-    lines.push(`  age: ${leak.ageMs}ms`);
+    lines.push(`    ${palette.label("Age:")} ${formatDuration(leak.ageMs)}`);
 
     if (leak.expectedDispose !== undefined) {
-      lines.push(`  expected dispose: ${leak.expectedDispose}`);
+      lines.push(
+        `    ${palette.label("Expected dispose:")} ${leak.expectedDispose}`,
+      );
     }
 
     if (leak.meta !== undefined) {
-      lines.push(`  meta: ${JSON.stringify(leak.meta)}`);
+      lines.push(`    ${palette.label("Meta:")} ${JSON.stringify(leak.meta)}`);
     }
 
-    if (leak.stack !== undefined) {
-      lines.push("  created at:");
-      lines.push(indentMultiline(leak.stack, "  "));
+    if (stackPreview.lines.length > 0) {
+      lines.push(
+        `    ${palette.label("Created at:")} ${stackPreview.lines[0]}`,
+      );
+
+      if (stackPreview.lines.length > 1) {
+        lines.push(`    ${palette.label("Stack preview:")}`);
+
+        for (const line of stackPreview.lines.slice(1)) {
+          lines.push(`      ${palette.muted(line)}`);
+        }
+      }
+
+      if (stackPreview.remaining > 0) {
+        lines.push(
+          `      ${palette.muted(`... ${stackPreview.remaining} more frame${stackPreview.remaining === 1 ? "" : "s"}`)}`,
+        );
+      }
     }
   }
 
@@ -47,16 +85,11 @@ export function formatPrettyReport(
   if (remaining > 0) {
     lines.push("");
     lines.push(
-      `... and ${remaining} more leaked resource${remaining === 1 ? "" : "s"}`,
+      palette.warn(
+        `... and ${remaining} more leaked resource${remaining === 1 ? "" : "s"}`,
+      ),
     );
   }
 
   return lines.join("\n");
-}
-
-function indentMultiline(value: string, prefix: string): string {
-  return value
-    .split("\n")
-    .map((line) => `${prefix}${line}`)
-    .join("\n");
 }

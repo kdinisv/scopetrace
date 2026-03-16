@@ -23,6 +23,8 @@ export type ReportOptions = {
 export type FormatReportOptions = {
   format?: ReportFormat;
   limit?: number;
+  stackFrameLimit?: number;
+  color?: boolean;
 };
 
 export type AssertOptions = {
@@ -30,6 +32,8 @@ export type AssertOptions = {
   limit?: number;
   ignoreRules?: IgnoreRule[];
   format?: ReportFormat;
+  stackFrameLimit?: number;
+  color?: boolean;
 };
 
 export type LeakedResource = {

@@ -11,7 +11,7 @@ export function captureStack(
     return undefined;
   }
 
-  return stack.split("\n").slice(3).join("\n").trim();
+  return stack.split("\n").slice(4).join("\n").trim();
 }
 
 export function isObjectLike(value: unknown): value is object {

@@ -40,17 +40,27 @@ const sampleReport: ScopeTraceReport = {
 
 describe("report formatting", () => {
   it("formats a pretty report", () => {
-    const output = formatPrettyReport(sampleReport);
+    const output = formatPrettyReport(sampleReport, {
+      color: false,
+      stackFrameLimit: 2,
+    });
 
-    expect(output).toContain("ScopeTrace report");
-    expect(output).toContain('interval \"heartbeat\"');
-    expect(output).toContain("scope: bootstrap > worker");
+    expect(output).toContain("ScopeTrace Report");
+    expect(output).toContain("Status: LEAKS DETECTED");
+    expect(output).toContain('[1] INTERVAL "heartbeat"');
+    expect(output).toContain("Scope: bootstrap > worker");
+    expect(output).toContain("Age: 3 s");
+    expect(output).toContain("Created at: src/worker.ts:10:1");
   });
 
   it("formats a compact report", () => {
-    const output = formatCompactReport(sampleReport, { limit: 1 });
+    const output = formatCompactReport(sampleReport, {
+      limit: 1,
+      color: false,
+    });
 
     expect(output).toContain("ScopeTrace: leaked=2");
+    expect(output).toContain("[1] interval");
     expect(output).toContain("heartbeat");
     expect(output).toContain("... and 1 more");
   });
@@ -67,14 +77,14 @@ describe("report formatting", () => {
   });
 
   it("dispatches formatting via formatReport()", () => {
-    expect(formatReport(sampleReport, { format: "pretty" })).toContain(
-      "ScopeTrace report",
-    );
-    expect(formatReport(sampleReport, { format: "compact" })).toContain(
-      "ScopeTrace: leaked=2",
-    );
-    expect(formatReport(sampleReport, { format: "json" })).toContain(
-      '"summary"',
-    );
+    expect(
+      formatReport(sampleReport, { format: "pretty", color: false }),
+    ).toContain("ScopeTrace Report");
+    expect(
+      formatReport(sampleReport, { format: "compact", color: false }),
+    ).toContain("ScopeTrace: leaked=2");
+    expect(
+      formatReport(sampleReport, { format: "json", color: false }),
+    ).toContain('"summary"');
   });
 });

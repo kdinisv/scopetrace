@@ -16,6 +16,26 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./zero-setup": {
+      "import": {
+        "types": "./dist/zero-setup/index.d.ts",
+        "default": "./dist/zero-setup/index.js"
+      },
+      "require": {
+        "types": "./dist/zero-setup/index.d.cts",
+        "default": "./dist/zero-setup/index.cjs"
+      }
+    },
+    "./register": {
+      "import": {
+        "types": "./dist/register.d.ts",
+        "default": "./dist/register.js"
+      },
+      "require": {
+        "types": "./dist/register.d.cts",
+        "default": "./dist/register.cjs"
+      }
     }
   },
   "files": [
@@ -27,13 +47,20 @@
     "build": "tsup",
     "check": "npm run type-check && npm test && npm run build",
     "dev": "tsup --watch",
+    "fixture:bad": "npm run build && node examples/mini-projects/bad.mjs",
+    "fixture:good": "npm run build && node examples/mini-projects/good.mjs",
+    "fixture:zero-bad": "npm run build && node --import ./dist/register.js examples/zero-setup/bad-app.mjs",
+    "fixture:zero-good": "npm run build && node --import ./dist/register.js examples/zero-setup/good-app.mjs",
     "pack:dry-run": "npm pack --dry-run",
     "prepublishOnly": "npm run check",
     "test": "vitest run",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/register.js",
+    "./dist/register.cjs"
+  ],
   "engines": {
     "node": ">=20"
   },

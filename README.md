@@ -16,7 +16,7 @@
 Jest's `--detectOpenHandles` is frequently insufficient for real projects.  
 `process.getActiveResourcesInfo()` shows types but not owners.
 
-`scopetrace` fills the gap with **explicit, scope-based resource ownership tracking** — no auto-patching, no surprises.
+`scopetrace` fills the gap with **explicit, scope-based resource ownership tracking** — deterministic, scope-aware, and CI-friendly. An optional [zero-setup mode](#zero-setup-mode) is available for quick first-pass diagnostics without code changes.
 
 ## Status
 
@@ -47,12 +47,11 @@ Jest's `--detectOpenHandles` is frequently insufficient for real projects.
 
 - Harden edge cases around timers and server lifecycle.
 - Add CI matrix and benchmark coverage before `v1.0.0`.
-- Expand adapters and examples without introducing auto-magic.
+- Expand adapters and examples.
 
 ### Out of scope for v1
 
 - Global auto-instrumentation through `async_hooks`
-- Deep monkey patching of Node built-ins
 - Built-in adapters for databases and message brokers
 - Worker threads, `child_process`, and broad socket auto-detection
 - Web UI or APM-style aggregation
@@ -116,11 +115,70 @@ console.log(formatCompactReport(report));
 
 `report()` returns a structured object with summary counts and active leaks. To render it for humans or CI logs, use `formatPrettyReport()`, `formatCompactReport()`, `formatJsonReport()`, or `formatReport()`.
 
+## Zero-Setup Mode
+
+For quick onboarding and first-pass diagnostics, there is a best-effort preload mode.
+
+Run your app without changing its code:
+
+```bash
+node --import scopetrace/register app.mjs
+```
+
+Useful environment variables:
+
+- `SCOPETRACE_FORMAT=pretty|compact|json`
+- `SCOPETRACE_STACK_FRAMES=2`
+- `SCOPETRACE_COLOR=0|1`
+- `SCOPETRACE_REPORT_ON_EXIT=0|1`
+- `SCOPETRACE_INCLUDE_TIMERS=0|1`
+- `SCOPETRACE_INCLUDE_HTTP=0|1`
+- `SCOPETRACE_INCLUDE_HTTPS=0|1`
+- `SCOPETRACE_INCLUDE_NET=0|1`
+
+What it can auto-track:
+
+- `setTimeout`
+- `setInterval`
+- `http.createServer()`
+- `https.createServer()`
+- `net.createServer()`
+
+What it cannot do reliably without explicit integration:
+
+- business scopes via `scope()`
+- custom disposables
+- precise ownership for arbitrary library resources
+
+This mode is intentionally best-effort. It is useful for initial leak discovery, while explicit instrumentation remains the accurate mode for ownership tracing.
+
 ## Examples
 
 - `examples/http-server/index.mjs`
 - `examples/graceful-shutdown/index.mjs`
 - `examples/node-test/leak-check.test.mjs`
+- `examples/mini-projects/good.mjs`
+- `examples/mini-projects/bad.mjs`
+- `examples/zero-setup/good-app.mjs`
+- `examples/zero-setup/bad-app.mjs`
+
+### Runnable CLI fixtures
+
+Run these from the repository root:
+
+```bash
+npm run fixture:good
+npm run fixture:bad
+npm run fixture:zero-good
+npm run fixture:zero-bad
+```
+
+Expected behavior:
+
+- `fixture:good` prints a clean report and exits with code `0`
+- `fixture:bad` prints leaked resources, then performs cleanup and exits with code `1`
+- `fixture:zero-good` runs a non-instrumented app through the preload and exits cleanly
+- `fixture:zero-bad` runs a non-instrumented app through the preload and prints a best-effort leak report on exit
 
 ## Release
 
@@ -128,7 +186,7 @@ See [docs/release-checklist.md](docs/release-checklist.md) for the publication c
 
 ## Design Principles
 
-- **Explicit over magic** — no auto-patching via `async_hooks` in v1
+- **Explicit over magic** — core API requires explicit tracking; optional zero-setup mode for quick diagnostics
 - **Scope-based ownership** — every resource knows its business context
 - **CI-friendly** — structured JSON output for automated pipelines
 - **TypeScript-first** — ESM + CJS, full types included
@@ -144,6 +202,7 @@ src/
   trackers/      timeout / interval / server / disposable (Phase 3+)
   reporting/     pretty / json formatters (Phase 4+)
   assertion/     assertNoLeaks (Phase 5+)
+  zero-setup/    optional preload mode (auto-patching timers / servers)
   types/         public.ts + internal.ts
   errors.ts      ScopeTraceError hierarchy
 ```

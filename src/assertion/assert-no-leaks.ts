@@ -14,8 +14,8 @@ export function assertNoLeaksFromReport(
 
   const mode = options.mode ?? "strict";
   const limit = options.limit ?? 3;
-  const format = options.format ?? "compact";
-  const message = createAssertionMessage(report, format, limit);
+  const format = options.format ?? "pretty";
+  const message = createAssertionMessage(report, format, limit, options);
 
   if (mode === "soft") {
     console.warn(message);
@@ -29,18 +29,29 @@ function createAssertionMessage(
   report: ScopeTraceReport,
   format: NonNullable<AssertOptions["format"]>,
   limit: number,
+  options: AssertOptions,
 ): string {
   switch (format) {
     case "json":
-      return formatJsonReport(report, { limit });
+      return formatJsonReport(report, {
+        limit,
+        stackFrameLimit: options.stackFrameLimit,
+        color: options.color,
+      });
     case "pretty":
-      return `ScopeTraceAssertionError: detected ${report.summary.leaked} leaked resource${
-        report.summary.leaked === 1 ? "" : "s"
-      }\n\n${formatPrettyReport(report, { limit })}`;
+      return `ScopeTraceAssertionError\n\n${formatPrettyReport(report, {
+        limit,
+        stackFrameLimit: options.stackFrameLimit,
+        color: options.color,
+      })}`;
     case "compact":
     default:
       return `ScopeTraceAssertionError: detected ${report.summary.leaked} leaked resource${
         report.summary.leaked === 1 ? "" : "s"
-      }\n${formatCompactReport(report, { limit })}`;
+      }\n${formatCompactReport(report, {
+        limit,
+        stackFrameLimit: options.stackFrameLimit,
+        color: options.color,
+      })}`;
   }
 }
