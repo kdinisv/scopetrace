@@ -132,6 +132,8 @@ npx scopetrace --format compact --stack-frames 2 app.mjs
 
 TypeScript entry files (`.ts`, `.tsx`, `.mts`, `.cts`) are supported out of the box through the built-in `tsx` runtime.
 
+If the entry file only exports functions or helpers and does not execute code at top level, `scopetrace` may report `total 0` because no tracked resources were created during process lifetime.
+
 Short alias:
 
 - `sctrace app.mjs`

@@ -27,6 +27,15 @@ export function formatPrettyReport(
   if (report.summary.leaked === 0) {
     lines.push("");
     lines.push(palette.ok("No leaked resources detected."));
+
+    if (report.summary.total === 0) {
+      lines.push(
+        palette.muted(
+          "No tracked resources were observed during process lifetime. The entry file may have exported helpers without executing them.",
+        ),
+      );
+    }
+
     return lines.join("\n");
   }
 

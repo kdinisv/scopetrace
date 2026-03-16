@@ -38,6 +38,16 @@ const sampleReport: ScopeTraceReport = {
   ],
 };
 
+const emptyReport: ScopeTraceReport = {
+  summary: {
+    total: 0,
+    active: 0,
+    disposed: 0,
+    leaked: 0,
+  },
+  leaks: [],
+};
+
 describe("report formatting", () => {
   it("formats a pretty report", () => {
     const output = formatPrettyReport(sampleReport, {
@@ -63,6 +73,15 @@ describe("report formatting", () => {
     expect(output).toContain("[1] interval");
     expect(output).toContain("heartbeat");
     expect(output).toContain("... and 1 more");
+  });
+
+  it("clarifies when no resources were observed", () => {
+    expect(formatPrettyReport(emptyReport, { color: false })).toContain(
+      "No tracked resources were observed during process lifetime.",
+    );
+    expect(formatCompactReport(emptyReport, { color: false })).toContain(
+      "no tracked resources were observed",
+    );
   });
 
   it("formats a json report", () => {

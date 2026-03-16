@@ -13,6 +13,10 @@ export function formatCompactReport(
   const palette = createPalette(normalized.color);
 
   if (report.summary.leaked === 0) {
+    if (report.summary.total === 0) {
+      return `${palette.ok("ScopeTrace")}: no leaks; no tracked resources were observed`;
+    }
+
     return `${palette.ok("ScopeTrace")}: no leaks (total=${report.summary.total} active=${report.summary.active} disposed=${report.summary.disposed})`;
   }
 
