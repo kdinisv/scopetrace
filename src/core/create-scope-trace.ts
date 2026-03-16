@@ -1,7 +1,10 @@
 import { createAsyncContext } from "../context/async-context";
 import { ScopeStore } from "../context/scope-store";
+import { ScopeRefCounter } from "../context/scope-ref-counter";
 import { ResourceRegistry } from "../registry/resource-registry";
 import { createIdGenerator } from "../registry/ids";
+import { TrackedIdentity } from "./tracked-identity";
+import { captureStack, isPromiseLike, isTimerDisposed } from "./utils";
 import { assertNoLeaksFromReport } from "../assertion/assert-no-leaks";
 import { ScopeTraceDisposeError, ScopeTraceUsageError } from "../errors";
 import type {
@@ -13,20 +16,15 @@ import type {
   LeakedResource,
   ScopeTraceReport,
 } from "../types/public";
-import type {
-  RegisterTrackedResourceInput,
-  ResourceKind,
-} from "../types/internal";
-
-const TRACKED_RESOURCE_ID = Symbol.for("scopetrace.resourceId");
+import type { ResourceKind } from "../types/internal";
 
 export function createScopeTrace(): ScopeTrace {
   const { getCurrentScopeId, runInScope } = createAsyncContext();
   const ids = createIdGenerator();
   const scopeStore = new ScopeStore();
   const registry = new ResourceRegistry();
-  const scopeRefCounts = new Map<string, number>();
-  let trackedObjectIds = new WeakMap<object, string>();
+  const refCounter = new ScopeRefCounter(scopeStore);
+  const identity = new TrackedIdentity();
 
   function scope<T>(
     name: string,
@@ -36,18 +34,11 @@ export function createScopeTrace(): ScopeTrace {
     const parentId = getCurrentScopeId();
     const id = ids.generateId("scope");
 
-    scopeStore.add({
-      id,
-      name,
-      parentId,
-      createdAt: Date.now(),
-      meta,
-    });
-
-    retainScope(id);
+    scopeStore.add({ id, name, parentId, createdAt: Date.now(), meta });
+    refCounter.retain(id);
 
     const finalizeScope = (): void => {
-      releaseScope(id);
+      refCounter.release(id);
     };
 
     try {
@@ -69,11 +60,8 @@ export function createScopeTrace(): ScopeTrace {
     timeout: NodeJS.Timeout,
     options?: TrackOptions,
   ): NodeJS.Timeout {
-    if (isObjectLike(timeout)) {
-      const existingId = trackedObjectIds.get(timeout);
-      if (existingId !== undefined) {
-        return timeout;
-      }
+    if (identity.get(timeout) !== undefined) {
+      return timeout;
     }
 
     const id = registerResource("timeout", {
@@ -83,7 +71,7 @@ export function createScopeTrace(): ScopeTrace {
       isDisposed: () => isTimerDisposed(timeout),
     });
 
-    rememberTrackedObject(timeout, id);
+    identity.remember(timeout, id);
     return timeout;
   }
 
@@ -91,11 +79,8 @@ export function createScopeTrace(): ScopeTrace {
     interval: NodeJS.Timeout,
     options?: TrackOptions,
   ): NodeJS.Timeout {
-    if (isObjectLike(interval)) {
-      const existingId = trackedObjectIds.get(interval);
-      if (existingId !== undefined) {
-        return interval;
-      }
+    if (identity.get(interval) !== undefined) {
+      return interval;
     }
 
     const id = registerResource("interval", {
@@ -105,7 +90,7 @@ export function createScopeTrace(): ScopeTrace {
       isDisposed: () => isTimerDisposed(interval),
     });
 
-    rememberTrackedObject(interval, id);
+    identity.remember(interval, id);
     return interval;
   }
 
@@ -113,11 +98,8 @@ export function createScopeTrace(): ScopeTrace {
     server: T,
     options?: TrackOptions,
   ): T {
-    if (isObjectLike(server)) {
-      const existingId = trackedObjectIds.get(server);
-      if (existingId !== undefined) {
-        return server;
-      }
+    if (identity.get(server) !== undefined) {
+      return server;
     }
 
     const id = registerResource("server", {
@@ -126,7 +108,7 @@ export function createScopeTrace(): ScopeTrace {
       resource: server,
     });
 
-    rememberTrackedObject(server, id);
+    identity.remember(server, id);
     instrumentServerClose(server, id);
 
     return server;
@@ -143,11 +125,8 @@ export function createScopeTrace(): ScopeTrace {
       );
     }
 
-    if (isObjectLike(resource)) {
-      const existingId = trackedObjectIds.get(resource);
-      if (existingId !== undefined) {
-        return resource;
-      }
+    if (identity.get(resource) !== undefined) {
+      return resource;
     }
 
     const id = registerResource("disposable", {
@@ -156,7 +135,7 @@ export function createScopeTrace(): ScopeTrace {
       dispose: () => disposer(resource),
     });
 
-    rememberTrackedObject(resource, id);
+    identity.remember(resource, id);
     return resource;
   }
 
@@ -202,19 +181,17 @@ export function createScopeTrace(): ScopeTrace {
   }
 
   function reset(): void {
-    scopeRefCounts.clear();
-    trackedObjectIds = new WeakMap<object, string>();
+    refCounter.clear();
+    identity.reset();
     scopeStore.clear();
     registry.clear();
   }
 
   function getTrackedId(resource: unknown): string | undefined {
-    if (!isObjectLike(resource)) {
-      return undefined;
-    }
-
-    return trackedObjectIds.get(resource) ?? getTrackedIdFromSymbol(resource);
+    return identity.get(resource);
   }
+
+  // --- Internal helpers ---
 
   function createReport(
     extraIgnoreRules: readonly IgnoreRule[],
@@ -272,9 +249,9 @@ export function createScopeTrace(): ScopeTrace {
     const id = ids.generateId(kind);
     const scopeId = getCurrentScopeId();
 
-    retainScopeChain(scopeId);
+    refCounter.retainChain(scopeId);
 
-    const input: RegisterTrackedResourceInput = {
+    registry.register({
       id,
       kind,
       label: options.label,
@@ -287,79 +264,16 @@ export function createScopeTrace(): ScopeTrace {
       dispose: options.dispose,
       isDisposed: options.isDisposed,
       onDispose: () => {
-        forgetTrackedObject(options.resource);
-        releaseScopeChain(scopeId);
+        identity.forget(options.resource);
+        refCounter.releaseChain(scopeId);
       },
-    };
+    });
 
-    registry.register(input);
     return id;
   }
 
   function resolveScopePath(scopeId: string): string {
     return scopeStore.getAncestryPath(scopeId);
-  }
-
-  function retainScope(scopeId: string): void {
-    scopeRefCounts.set(scopeId, (scopeRefCounts.get(scopeId) ?? 0) + 1);
-  }
-
-  function releaseScope(scopeId: string): void {
-    const nextCount = (scopeRefCounts.get(scopeId) ?? 0) - 1;
-
-    if (nextCount <= 0) {
-      scopeRefCounts.delete(scopeId);
-      scopeStore.delete(scopeId);
-      return;
-    }
-
-    scopeRefCounts.set(scopeId, nextCount);
-  }
-
-  function retainScopeChain(scopeId: string | undefined): void {
-    if (scopeId === undefined) {
-      return;
-    }
-
-    for (const ancestorId of scopeStore.getAncestryIds(scopeId)) {
-      retainScope(ancestorId);
-    }
-  }
-
-  function releaseScopeChain(scopeId: string | undefined): void {
-    if (scopeId === undefined) {
-      return;
-    }
-
-    for (const ancestorId of scopeStore.getAncestryIds(scopeId)) {
-      releaseScope(ancestorId);
-    }
-  }
-
-  function rememberTrackedObject(resource: unknown, id: string): void {
-    if (!isObjectLike(resource)) {
-      return;
-    }
-
-    trackedObjectIds.set(resource, id);
-
-    try {
-      Object.defineProperty(resource, TRACKED_RESOURCE_ID, {
-        configurable: true,
-        enumerable: false,
-        value: id,
-      });
-    } catch {
-      // Ignore non-extensible resources.
-    }
-  }
-
-  function forgetTrackedObject(resource: unknown): void {
-    if (!isObjectLike(resource)) {
-      return;
-    }
-
-    trackedObjectIds.delete(resource);
   }
 
   function instrumentServerClose(
@@ -389,12 +303,11 @@ export function createScopeTrace(): ScopeTrace {
 
       if (isPromiseLike(result)) {
         void (result as Promise<unknown>).then(
-          (value) => {
+          () => {
             registry.markDisposed(id);
-            return value;
           },
-          (error) => {
-            throw error;
+          () => {
+            // Close failed — do not mark as disposed.
           },
         );
       }
@@ -417,46 +330,4 @@ export function createScopeTrace(): ScopeTrace {
     ignore,
     reset,
   };
-}
-
-function captureStack(
-  captureStackOption: boolean | undefined,
-): string | undefined {
-  if (captureStackOption === false) {
-    return undefined;
-  }
-
-  const stack = new Error().stack;
-
-  if (stack === undefined) {
-    return undefined;
-  }
-
-  return stack.split("\n").slice(3).join("\n").trim();
-}
-
-function isObjectLike(value: unknown): value is object {
-  return (
-    (typeof value === "object" && value !== null) || typeof value === "function"
-  );
-}
-
-function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "then" in value &&
-    typeof value.then === "function"
-  );
-}
-
-function isTimerDisposed(timer: NodeJS.Timeout): boolean {
-  return Boolean(
-    (timer as NodeJS.Timeout & { _destroyed?: boolean })._destroyed,
-  );
-}
-
-function getTrackedIdFromSymbol(resource: object): string | undefined {
-  const value = (resource as Record<PropertyKey, unknown>)[TRACKED_RESOURCE_ID];
-  return typeof value === "string" ? value : undefined;
 }

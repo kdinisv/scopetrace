@@ -135,10 +135,16 @@ export class ResourceRegistry {
   }
 
   private syncActiveResources(): void {
+    const toDispose: string[] = [];
+
     for (const [id, resource] of this.activeResources) {
       if (resource.isDisposed?.() === true) {
-        this.markDisposed(id);
+        toDispose.push(id);
       }
+    }
+
+    for (const id of toDispose) {
+      this.markDisposed(id);
     }
   }
 
