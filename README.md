@@ -123,7 +123,27 @@ Run your app without changing its code:
 
 ```bash
 node --import scopetrace/register app.mjs
+npx scopetrace app.mjs
+npx scopetrace --format compact --stack-frames 2 app.mjs
 ```
+
+`scopetrace ...` is a small wrapper around the preload mode. In `v0.3.x` it supports Node commands only. The legacy form `scopetrace run node app.mjs` still works, but the short form is now the default.
+
+Short alias:
+
+- `sctrace app.mjs`
+
+Use `sctrace` when the package is installed locally or globally. For one-off remote execution, keep using `npx scopetrace ...` or `npm exec --package scopetrace sctrace ...`.
+
+CLI wrapper options:
+
+- `--format pretty|compact|json`
+- `--stack-frames <number>`
+- `--color | --no-color`
+- `--timers | --no-timers`
+- `--http | --no-http`
+- `--https | --no-https`
+- `--net | --no-net`
 
 Useful environment variables:
 
@@ -171,6 +191,8 @@ npm run fixture:good
 npm run fixture:bad
 npm run fixture:zero-good
 npm run fixture:zero-bad
+npm run fixture:cli-zero-good
+npm run fixture:cli-zero-bad
 ```
 
 Expected behavior:
@@ -179,6 +201,8 @@ Expected behavior:
 - `fixture:bad` prints leaked resources, then performs cleanup and exits with code `1`
 - `fixture:zero-good` runs a non-instrumented app through the preload and exits cleanly
 - `fixture:zero-bad` runs a non-instrumented app through the preload and prints a best-effort leak report on exit
+- `fixture:cli-zero-good` runs the same zero-setup scenario via the CLI wrapper
+- `fixture:cli-zero-bad` runs the same zero-setup scenario via the CLI wrapper
 
 ## Release
 
@@ -191,21 +215,6 @@ See [docs/release-checklist.md](docs/release-checklist.md) for the publication c
 - **CI-friendly** — structured JSON output for automated pipelines
 - **TypeScript-first** — ESM + CJS, full types included
 - **Zero runtime dependencies**
-
-## Architecture
-
-```
-src/
-  core/          createScopeTrace() factory
-  context/       AsyncLocalStorage layer + scope graph
-  registry/      tracked resource store (Phase 2+)
-  trackers/      timeout / interval / server / disposable (Phase 3+)
-  reporting/     pretty / json formatters (Phase 4+)
-  assertion/     assertNoLeaks (Phase 5+)
-  zero-setup/    optional preload mode (auto-patching timers / servers)
-  types/         public.ts + internal.ts
-  errors.ts      ScopeTraceError hierarchy
-```
 
 ## License
 

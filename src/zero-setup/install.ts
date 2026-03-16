@@ -2,10 +2,12 @@ import http from "node:http";
 import https from "node:https";
 import net from "node:net";
 import { createScopeTrace } from "../core/create-scope-trace";
+import { isInternalFrame } from "../reporting/format-shared";
 import { formatReport } from "../reporting/format-report";
 import type {
   FormatReportOptions,
   ScopeTrace,
+  TrackOptions,
   ScopeTraceReport,
 } from "../types/public";
 
@@ -147,13 +149,10 @@ function patchTimers(trace: ScopeTrace): Cleanup {
     ...args: unknown[]
   ) => {
     const handle = originalSetTimeout(handler, timeout, ...args);
-    return trace.trackTimeout(handle, {
-      label: "setTimeout",
-      meta: {
-        autoTracked: true,
-        source: "global.setTimeout",
-      },
-    });
+    return trace.trackTimeout(
+      handle,
+      createAutoTrackOptions("setTimeout", "global.setTimeout") as TrackOptions,
+    );
   }) as typeof globalThis.setTimeout;
 
   globalThis.setInterval = ((
@@ -162,13 +161,13 @@ function patchTimers(trace: ScopeTrace): Cleanup {
     ...args: unknown[]
   ) => {
     const handle = originalSetInterval(handler, timeout, ...args);
-    return trace.trackInterval(handle, {
-      label: "setInterval",
-      meta: {
-        autoTracked: true,
-        source: "global.setInterval",
-      },
-    });
+    return trace.trackInterval(
+      handle,
+      createAutoTrackOptions(
+        "setInterval",
+        "global.setInterval",
+      ) as TrackOptions,
+    );
   }) as typeof globalThis.setInterval;
 
   return () => {
@@ -189,20 +188,50 @@ function patchServerFactory<
   source: string,
   trace: ScopeTrace,
 ): Cleanup {
-  const originalCreateServer = moduleRef.createServer.bind(moduleRef);
+  const originalCreateServer = moduleRef.createServer;
 
   moduleRef.createServer = ((...args: Parameters<TModule["createServer"]>) => {
-    const server = originalCreateServer(...args);
-    return trace.trackServer(server, {
-      label,
-      meta: {
-        autoTracked: true,
-        source,
-      },
-    });
-  }) as TModule["createServer"];
+    const server = originalCreateServer.apply(moduleRef, args) as ReturnType<
+      TModule["createServer"]
+    >;
+    return trace.trackServer(
+      server,
+      createAutoTrackOptions(label, source) as TrackOptions,
+    );
+  }) as unknown as TModule["createServer"];
 
   return () => {
-    moduleRef.createServer = originalCreateServer as TModule["createServer"];
+    moduleRef.createServer = originalCreateServer;
   };
+}
+
+function createAutoTrackOptions(
+  label: string,
+  source: string,
+): TrackOptions & { stack?: string } {
+  return {
+    label,
+    meta: {
+      autoTracked: true,
+      source,
+    },
+    stack: captureZeroSetupStack(),
+  };
+}
+
+function captureZeroSetupStack(): string | undefined {
+  const stack = new Error().stack;
+
+  if (stack === undefined) {
+    return undefined;
+  }
+
+  const lines = stack
+    .split("\n")
+    .slice(1)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !isInternalFrame(line));
+
+  return lines.length > 0 ? lines.join("\n") : undefined;
 }

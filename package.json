@@ -3,6 +3,10 @@
   "version": "0.3.0",
   "description": "Track resource ownership and detect leaks in Node.js processes",
   "type": "module",
+  "bin": {
+    "scopetrace": "./dist/cli.js",
+    "sctrace": "./dist/cli.js"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -46,6 +50,8 @@
   "scripts": {
     "build": "tsup",
     "check": "npm run type-check && npm test && npm run build",
+    "fixture:cli-zero-bad": "npm run build && node ./dist/cli.js examples/zero-setup/bad-app.mjs",
+    "fixture:cli-zero-good": "npm run build && node ./dist/cli.js examples/zero-setup/good-app.mjs",
     "dev": "tsup --watch",
     "fixture:bad": "npm run build && node examples/mini-projects/bad.mjs",
     "fixture:good": "npm run build && node examples/mini-projects/good.mjs",
@@ -59,7 +65,9 @@
   },
   "sideEffects": [
     "./dist/register.js",
-    "./dist/register.cjs"
+    "./dist/register.cjs",
+    "./dist/cli.js",
+    "./dist/cli.cjs"
   ],
   "engines": {
     "node": ">=20"

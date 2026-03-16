@@ -18,6 +18,10 @@ import type {
 } from "../types/public";
 import type { ResourceKind } from "../types/internal";
 
+type InternalTrackOptions = TrackOptions & {
+  stack?: string;
+};
+
 export function createScopeTrace(): ScopeTrace {
   const { getCurrentScopeId, runInScope } = createAsyncContext();
   const ids = createIdGenerator();
@@ -69,7 +73,7 @@ export function createScopeTrace(): ScopeTrace {
       expectedDispose: options?.expectedDispose ?? "clearTimeout()",
       resource: timeout,
       isDisposed: () => isTimerDisposed(timeout),
-    });
+    } as InternalTrackOptions);
 
     identity.remember(timeout, id);
     return timeout;
@@ -88,7 +92,7 @@ export function createScopeTrace(): ScopeTrace {
       expectedDispose: options?.expectedDispose ?? "clearInterval()",
       resource: interval,
       isDisposed: () => isTimerDisposed(interval),
-    });
+    } as InternalTrackOptions);
 
     identity.remember(interval, id);
     return interval;
@@ -106,7 +110,7 @@ export function createScopeTrace(): ScopeTrace {
       ...options,
       expectedDispose: options?.expectedDispose ?? "server.close()",
       resource: server,
-    });
+    } as InternalTrackOptions);
 
     identity.remember(server, id);
     instrumentServerClose(server, id);
@@ -133,7 +137,7 @@ export function createScopeTrace(): ScopeTrace {
       ...options,
       resource,
       dispose: () => disposer(resource),
-    });
+    } as InternalTrackOptions);
 
     identity.remember(resource, id);
     return resource;
@@ -240,7 +244,7 @@ export function createScopeTrace(): ScopeTrace {
 
   function registerResource(
     kind: ResourceKind,
-    options: TrackOptions & {
+    options: InternalTrackOptions & {
       resource?: unknown;
       dispose?: () => Promise<void> | void;
       isDisposed?: () => boolean;
@@ -259,7 +263,7 @@ export function createScopeTrace(): ScopeTrace {
       createdAt: Date.now(),
       expectedDispose: options.expectedDispose,
       meta: options.meta,
-      stack: captureStack(options.captureStack),
+      stack: options.stack ?? captureStack(options.captureStack),
       resource: options.resource,
       dispose: options.dispose,
       isDisposed: options.isDisposed,

@@ -119,8 +119,12 @@ function normalizeStackLine(line: string): string {
     .replace(/\s+/g, " ");
 }
 
-function isInternalFrame(line: string): boolean {
+export function isInternalFrame(line: string): boolean {
   return (
+    line.includes("src/zero-setup/install.") ||
+    line.includes("src/register.") ||
+    line.includes("dist/register.") ||
+    line.includes("dist/zero-setup/index.") ||
     line.includes("node:internal/") ||
     line.includes("ModuleJob.run") ||
     line.includes("asyncRunEntryPointWithESMLoader") ||
