@@ -20,17 +20,17 @@ Jest's `--detectOpenHandles` is frequently insufficient for real projects.
 
 ## Status
 
-`v0.1.0-dev` — Phase 1 foundation complete.
+`v0.3.0` — the main public stack is implemented: tracking, reporting, assertions, and runnable examples.
 
-| Phase | Status     | Description                               |
-| ----- | ---------- | ----------------------------------------- |
-| 1     | ✅ Done    | Foundation: `scope()` + AsyncLocalStorage |
-| 2     | 🔜 Next    | Resource registry (statuses, IDs)         |
-| 3     | 🔜 Planned | Trackers: timeout / interval / server     |
-| 4     | 🔜 Planned | Reporting: pretty / json / compact        |
-| 5     | 🔜 Planned | `assertNoLeaks()` — CI and test hooks     |
-| 6     | 🔜 Planned | Integration examples                      |
-| 7     | 🔜 Planned | Hardening + v1.0.0                        |
+| Phase | Status     | Description                                                  |
+| ----- | ---------- | ------------------------------------------------------------ |
+| 1     | ✅ Done    | Foundation: `scope()` + AsyncLocalStorage                    |
+| 2     | ✅ Done    | Resource registry (statuses, IDs)                            |
+| 3     | ✅ Done    | Trackers: timeout / interval / server / disposable           |
+| 4     | ✅ Done    | Structured report + `pretty` / `compact` / `json` formatting |
+| 5     | ✅ Done    | `assertNoLeaks()` with strict / soft modes                   |
+| 6     | ✅ Done    | Integration examples                                         |
+| 7     | 🔜 Planned | Hardening + v1.0.0                                           |
 
 ## Roadmap
 
@@ -45,9 +45,9 @@ Jest's `--detectOpenHandles` is frequently insufficient for real projects.
 
 ### Current focus
 
-- Finish the resource registry without retaining unnecessary strong references.
-- Ship the first useful trackers for timers and custom disposables.
-- Make `report()` actionable before adding broader integrations.
+- Harden edge cases around timers and server lifecycle.
+- Add CI matrix and benchmark coverage before `v1.0.0`.
+- Expand adapters and examples without introducing auto-magic.
 
 ### Out of scope for v1
 
@@ -68,43 +68,63 @@ Jest's `--detectOpenHandles` is frequently insufficient for real projects.
 npm install scopetrace
 ```
 
-## Usage (v0.2+ API preview)
+## Usage
 
 ```ts
-import { createScopeTrace } from "scopetrace";
+import { createScopeTrace, formatCompactReport } from "scopetrace";
 
 const st = createScopeTrace();
 
-// Wrap any operation in a named scope
-await st.scope("request:POST /api/users", async () => {
-  const server = http.createServer(handler);
-  st.trackServer(server, {
-    label: "api-server",
-    expectedDispose: "server.close()",
-  });
+await st.scope("bootstrap", async () => {
+  const heartbeat = st.trackInterval(
+    setInterval(() => {}, 1000),
+    {
+      label: "heartbeat",
+    },
+  );
 
-  const timer = setTimeout(() => {}, 5000);
-  st.trackTimeout(timer, { label: "request-timeout" });
+  const disposable = st.trackDisposable(
+    { closed: false },
+    (resource) => {
+      resource.closed = true;
+    },
+    {
+      label: "job-resource",
+      expectedDispose: "disposeTracked(id)",
+    },
+  );
 
-  // ... do work ...
+  const reportBeforeDispose = st.report();
+  console.log(reportBeforeDispose.summary);
 
-  clearTimeout(timer);
-  await closeServer(server);
+  clearInterval(heartbeat);
+
+  const disposableId = st.getTrackedId(disposable);
+
+  if (disposableId !== undefined) {
+    await st.disposeTracked(disposableId);
+  }
+
+  console.log(disposable.closed);
 });
 
-// In afterAll / shutdown hook:
 st.assertNoLeaks();
-// Throws ScopeTraceAssertionError if anything leaked:
-//
-// ScopeTraceAssertionError: detected 1 leaked resource
-//
-//   - interval "heartbeat"
-//     scope: bootstrap > redis-subscriber
-//     age: 183244ms
-//     expected dispose: subscriber.close()
-//     created at:
-//     src/infra/redis/subscriber.ts:42:17
+
+const report = st.report();
+console.log(formatCompactReport(report));
 ```
+
+`report()` returns a structured object with summary counts and active leaks. To render it for humans or CI logs, use `formatPrettyReport()`, `formatCompactReport()`, `formatJsonReport()`, or `formatReport()`.
+
+## Examples
+
+- `examples/http-server/index.mjs`
+- `examples/graceful-shutdown/index.mjs`
+- `examples/node-test/leak-check.test.mjs`
+
+## Release
+
+See [docs/release-checklist.md](docs/release-checklist.md) for the publication checklist.
 
 ## Design Principles
 

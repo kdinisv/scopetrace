@@ -22,3 +22,20 @@ export type TrackedResource = {
   meta?: Record<string, unknown>;
   stack?: string;
 };
+
+export type RegisterTrackedResourceInput = Omit<
+  TrackedResource,
+  "status" | "disposedAt"
+> & {
+  dispose?: () => Promise<void> | void;
+  isDisposed?: () => boolean;
+  onDispose?: () => void;
+  resource?: unknown;
+};
+
+export type RegisteredTrackedResource = TrackedResource & {
+  dispose?: () => Promise<void> | void;
+  isDisposed?: () => boolean;
+  onDispose?: () => void;
+  resource?: unknown;
+};

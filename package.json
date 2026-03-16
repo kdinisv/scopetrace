@@ -1,6 +1,6 @@
 {
   "name": "scopetrace",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Track resource ownership and detect leaks in Node.js processes",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -19,35 +19,58 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
+    "check": "npm run type-check && npm test && npm run build",
     "dev": "tsup --watch",
+    "pack:dry-run": "npm pack --dry-run",
+    "prepublishOnly": "npm run check",
     "test": "vitest run",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
+  "sideEffects": false,
   "engines": {
     "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kdinisv/scopetrace.git"
+  },
+  "homepage": "https://github.com/kdinisv/scopetrace#readme",
+  "bugs": {
+    "url": "https://github.com/kdinisv/scopetrace/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "node",
     "leak",
+    "leak-detection",
     "timer",
     "server",
     "diagnostics",
     "scope",
     "async",
     "handle",
+    "open-handles",
+    "resource-tracking",
+    "graceful-shutdown",
+    "jest",
+    "vitest",
     "memory-leak",
     "asynclocalstorage"
   ],
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "tsup": "^8.0.0",
-    "typescript": "^5.4.0",
-    "vitest": "^2.0.0"
+    "@types/node": "^25.5.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }

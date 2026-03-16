@@ -28,6 +28,19 @@ export class ScopeStore {
     return parts.join(" > ");
   }
 
+  getAncestryIds(id: string): string[] {
+    const ids: string[] = [];
+    let current: ScopeRecord | undefined = this.scopes.get(id);
+    while (current !== undefined) {
+      ids.push(current.id);
+      current =
+        current.parentId !== undefined
+          ? this.scopes.get(current.parentId)
+          : undefined;
+    }
+    return ids;
+  }
+
   delete(id: string): boolean {
     return this.scopes.delete(id);
   }

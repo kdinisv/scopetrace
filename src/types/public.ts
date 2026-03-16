@@ -1,5 +1,7 @@
 import type { ResourceKind, TrackedResource } from "./internal";
 
+export type ReportFormat = "pretty" | "compact" | "json";
+
 export type TrackOptions = {
   label?: string;
   expectedDispose?: string;
@@ -10,23 +12,29 @@ export type TrackOptions = {
 export type IgnoreRule =
   | { kind: ResourceKind }
   | { label: string }
+  | { scope: string }
   | { scopeId: string }
   | { predicate: (resource: TrackedResource) => boolean };
 
 export type ReportOptions = {
-  format?: "pretty" | "json" | "compact";
-  includeDisposed?: boolean;
+  ignoreRules?: IgnoreRule[];
+};
+
+export type FormatReportOptions = {
+  format?: ReportFormat;
+  limit?: number;
 };
 
 export type AssertOptions = {
   mode?: "strict" | "soft";
   limit?: number;
   ignoreRules?: IgnoreRule[];
+  format?: ReportFormat;
 };
 
 export type LeakedResource = {
   id: string;
-  kind: string;
+  kind: ResourceKind;
   label?: string;
   scope?: string;
   createdAt: number;
@@ -54,6 +62,7 @@ export type ScopeTrace = {
   ): T | Promise<T>;
 
   getCurrentScopeId(): string | undefined;
+  getTrackedId(resource: unknown): string | undefined;
 
   trackTimeout(timeout: NodeJS.Timeout, options?: TrackOptions): NodeJS.Timeout;
   trackInterval(
