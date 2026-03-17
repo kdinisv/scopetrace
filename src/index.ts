@@ -1,4 +1,5 @@
 export { createScopeTrace } from "./core/create-scope-trace";
+export { createGracefulShutdown } from "./graceful-shutdown";
 export { formatCompactReport } from "./reporting/format-compact";
 export { formatJsonReport } from "./reporting/format-json";
 export { formatPrettyReport } from "./reporting/format-pretty";
@@ -21,6 +22,10 @@ export type {
   IgnoreRule,
   ScopeTraceReport,
   LeakedResource,
+  GracefulShutdownProcessLike,
+  GracefulShutdownOptions,
+  GracefulShutdownResult,
+  GracefulShutdownController,
 } from "./types/public";
 export type {
   ZeroSetupController,

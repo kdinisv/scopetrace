@@ -2,6 +2,18 @@ import type { ResourceKind, TrackedResource } from "./internal";
 
 export type ReportFormat = "pretty" | "compact" | "json";
 
+export type GracefulShutdownProcessLike = {
+  on(
+    event: NodeJS.Signals,
+    listener: (signal: NodeJS.Signals) => void,
+  ): unknown;
+  removeListener(
+    event: NodeJS.Signals,
+    listener: (signal: NodeJS.Signals) => void,
+  ): unknown;
+  exit(code?: number): void | never;
+};
+
 export type TrackOptions = {
   label?: string;
   expectedDispose?: string;
@@ -56,6 +68,37 @@ export type ScopeTraceReport = {
     leaked: number;
   };
   leaks: LeakedResource[];
+};
+
+export type GracefulShutdownOptions = {
+  cleanup?: (signal: NodeJS.Signals) => Promise<void> | void;
+  signals?: readonly NodeJS.Signals[];
+  ignoreRules?: IgnoreRule[];
+  mode?: "strict" | "soft";
+  format?: ReportFormat;
+  limit?: number;
+  stackFrameLimit?: number;
+  color?: boolean;
+  logger?: (message: string) => void;
+  process?: GracefulShutdownProcessLike;
+  cleanExitCode?: number;
+  leakExitCode?: number;
+  errorExitCode?: number;
+  exitOnSignal?: boolean;
+};
+
+export type GracefulShutdownResult = {
+  signal: NodeJS.Signals;
+  report: ScopeTraceReport;
+  exitCode: number;
+  error?: Error;
+};
+
+export type GracefulShutdownController = {
+  trace: ScopeTrace;
+  run(signal: NodeJS.Signals): Promise<GracefulShutdownResult>;
+  install(): void;
+  uninstall(): void;
 };
 
 export type ScopeTrace = {

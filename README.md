@@ -2,6 +2,8 @@
 
 > Track resource ownership and detect leaks in Node.js processes
 
+[Русская версия README](README.ru.md)
+
 **scopetrace** gives you not just a list of "alive handles" — it gives you an **ownership trace**:
 
 - which resource is still alive
@@ -114,6 +116,34 @@ console.log(formatCompactReport(report));
 ```
 
 `report()` returns a structured object with summary counts and active leaks. To render it for humans or CI logs, use `formatPrettyReport()`, `formatCompactReport()`, `formatJsonReport()`, or `formatReport()`.
+
+## Graceful Shutdown Helper
+
+Use the shutdown helper when you want a reusable signal handler with cleanup, reporting, and leak-based exit codes.
+
+```ts
+import { createGracefulShutdown, createScopeTrace } from "scopetrace";
+
+const st = createScopeTrace();
+const heartbeat = st.trackInterval(
+  setInterval(() => {}, 1_000),
+  {
+    label: "heartbeat",
+  },
+);
+
+const shutdown = createGracefulShutdown(st, {
+  cleanup: async () => {
+    clearInterval(heartbeat);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  },
+  format: "compact",
+});
+
+shutdown.install();
+```
+
+The controller exposes `install()`, `run(signal)`, and `uninstall()`. `run()` is useful in tests or manual shutdown orchestration, while `install()` wires OS signal listeners and exits with `0` on a clean shutdown or `1` when cleanup fails or strict leak checks still find active resources.
 
 ## Zero-Setup Mode
 
