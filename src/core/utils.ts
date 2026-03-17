@@ -1,3 +1,5 @@
+import { captureNormalizedStack } from "../stack/normalize-stack";
+
 export function captureStack(
   captureStackOption: boolean | undefined,
 ): string | undefined {
@@ -5,13 +7,7 @@ export function captureStack(
     return undefined;
   }
 
-  const stack = new Error().stack;
-
-  if (stack === undefined) {
-    return undefined;
-  }
-
-  return stack.split("\n").slice(4).join("\n").trim();
+  return captureNormalizedStack(1);
 }
 
 export function isObjectLike(value: unknown): value is object {

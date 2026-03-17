@@ -1,3 +1,4 @@
+import path from "node:path";
 import http from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -79,9 +80,13 @@ describe("zero-setup mode", () => {
     const leak = report.leaks.find((resource) =>
       resource.stack?.includes("zero-setup.test.ts"),
     );
+    const firstFrame = leak?.stack?.split("\n")[0];
 
     expect(leak).toBeDefined();
-    expect(leak?.stack?.split("\n")[0]).toContain("zero-setup.test.ts");
+    expect(firstFrame).toContain("test/integration/zero-setup.test.ts");
+    expect(firstFrame).not.toContain(
+      path.resolve("test/integration/zero-setup.test.ts"),
+    );
     expect(leak?.stack).not.toContain("src/zero-setup/install.ts");
     expect(leak?.stack).not.toContain("dist/register.js");
   });

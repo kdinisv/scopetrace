@@ -1,6 +1,6 @@
 {
   "name": "scopetrace",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "description": "Track resource ownership and detect leaks in Node.js processes",
   "type": "module",
   "bin": {

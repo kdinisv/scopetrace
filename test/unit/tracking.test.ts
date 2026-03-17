@@ -60,6 +60,12 @@ describe("tracking and reporting", () => {
       meta: { subsystem: "jobs" },
     });
     expect(result.leaks[0]?.stack).toBeTruthy();
+    expect(result.leaks[0]?.stack?.split("\n")[0]).toContain(
+      "test/unit/tracking.test.ts",
+    );
+    expect(result.leaks[0]?.stack).not.toContain(
+      "src/core/create-scope-trace.ts",
+    );
   });
 
   it("disposeTracked() runs the disposer and removes the leak from report", async () => {

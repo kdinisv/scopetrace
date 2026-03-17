@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vitest";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   formatCompactReport,
   formatJsonReport,
   formatPrettyReport,
   formatReport,
 } from "../../src/index";
+import { setFindSourceMapForTesting } from "../../src/stack/normalize-stack";
 import type { ScopeTraceReport } from "../../src/types/public";
 
 const sampleReport: ScopeTraceReport = {
@@ -47,6 +50,10 @@ const emptyReport: ScopeTraceReport = {
   },
   leaks: [],
 };
+
+afterEach(() => {
+  setFindSourceMapForTesting(undefined);
+});
 
 describe("report formatting", () => {
   it("formats a pretty report", () => {
@@ -93,6 +100,75 @@ describe("report formatting", () => {
     expect(parsed.summary.leaked).toBe(2);
     expect(parsed.leaks).toHaveLength(1);
     expect(parsed.truncatedLeaks).toBe(1);
+  });
+
+  it("normalizes file urls and workspace paths in stack previews", () => {
+    const stack = `at createWorker (${pathToFileURL(path.resolve("src/worker.ts")).href}:10:1)`;
+    const report: ScopeTraceReport = {
+      ...sampleReport,
+      leaks: [
+        {
+          ...sampleReport.leaks[0],
+          stack,
+        },
+      ],
+    };
+
+    const output = formatPrettyReport(report, {
+      color: false,
+      stackFrameLimit: 2,
+    });
+
+    expect(output).toContain(
+      "Created at: at createWorker (src/worker.ts:10:1)",
+    );
+    expect(output).not.toContain(process.cwd());
+  });
+
+  it("uses source maps when available for stack previews", () => {
+    const generatedFile = path.resolve("dist/generated/example.js");
+    setFindSourceMapForTesting((filePath) => {
+      if (filePath !== generatedFile) {
+        return undefined;
+      }
+
+      return {
+        payload: {
+          file: generatedFile,
+          version: 3,
+          sources: ["../../src/example.ts"],
+          sourcesContent: [],
+          names: [],
+          mappings: "",
+          sourceRoot: "",
+        },
+        findEntry: () => ({}),
+        findOrigin: () => ({
+          name: undefined,
+          fileName: "../../src/example.ts",
+          lineNumber: 7,
+          columnNumber: 9,
+        }),
+      };
+    });
+
+    const report: ScopeTraceReport = {
+      ...sampleReport,
+      leaks: [
+        {
+          ...sampleReport.leaks[0],
+          stack: `at bootstrap (${generatedFile}:12:34)`,
+        },
+      ],
+    };
+
+    const output = formatPrettyReport(report, {
+      color: false,
+      stackFrameLimit: 2,
+    });
+
+    expect(output).toContain("Created at: at bootstrap (src/example.ts:7:9)");
+    expect(output).not.toContain("dist/generated/example.js:12:34");
   });
 
   it("dispatches formatting via formatReport()", () => {

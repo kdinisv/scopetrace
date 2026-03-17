@@ -1,4 +1,5 @@
 import type { FormatReportOptions, ScopeTraceReport } from "../types/public";
+import { isInternalFrame, normalizeStackLines } from "../stack/normalize-stack";
 
 const ANSI = {
   reset: "\x1b[0m",
@@ -93,10 +94,7 @@ export function getStackPreview(
     return { lines: [], remaining: 0 };
   }
 
-  const normalizedLines = stack
-    .split("\n")
-    .map((line) => normalizeStackLine(line))
-    .filter((line) => line.length > 0);
+  const normalizedLines = normalizeStackLines(stack);
 
   const relevantLines = normalizedLines.filter(
     (line) => !isInternalFrame(line),
@@ -107,28 +105,6 @@ export function getStackPreview(
     lines: lines.slice(0, frameLimit),
     remaining: Math.max(0, lines.length - frameLimit),
   };
-}
-
-function normalizeStackLine(line: string): string {
-  return line
-    .trim()
-    .replace(/file:\/\//g, "")
-    .replace(/^at \/([A-Za-z]:\/)/, "at $1")
-    .replace(/\(\/([A-Za-z]:\/)/g, "($1")
-    .replace(/\s+/g, " ");
-}
-
-export function isInternalFrame(line: string): boolean {
-  return (
-    line.includes("src/zero-setup/install.") ||
-    line.includes("src/register.") ||
-    line.includes("dist/register.") ||
-    line.includes("dist/zero-setup/index.") ||
-    line.includes("node:internal/") ||
-    line.includes("ModuleJob.run") ||
-    line.includes("asyncRunEntryPointWithESMLoader") ||
-    line.includes("onImport.tracePromise")
-  );
 }
 
 function shouldUseColor(): boolean {

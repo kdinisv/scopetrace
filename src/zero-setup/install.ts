@@ -2,8 +2,8 @@ import http from "node:http";
 import https from "node:https";
 import net from "node:net";
 import { createScopeTrace } from "../core/create-scope-trace";
-import { isInternalFrame } from "../reporting/format-shared";
 import { formatReport } from "../reporting/format-report";
+import { captureNormalizedStack } from "../stack/normalize-stack";
 import type {
   FormatReportOptions,
   ScopeTrace,
@@ -225,18 +225,5 @@ function createAutoTrackOptions(
 }
 
 function captureZeroSetupStack(): string | undefined {
-  const stack = new Error().stack;
-
-  if (stack === undefined) {
-    return undefined;
-  }
-
-  const lines = stack
-    .split("\n")
-    .slice(1)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .filter((line) => !isInternalFrame(line));
-
-  return lines.length > 0 ? lines.join("\n") : undefined;
+  return captureNormalizedStack(1);
 }
